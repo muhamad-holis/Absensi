@@ -98,7 +98,10 @@ body{padding-bottom:60px;}
   <div class="success-ico" id="successIco">✅</div>
   <h2 id="successTitle">Absensi Berhasil!</h2>
   <p id="successMsg">Data Anda sudah tercatat.</p>
-  <button onclick="tutupSuccess()">OK</button>
+  <div id="successBtns" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px;">
+    <button id="btnKeluarNow" onclick="tampilKeluarDariSuccess()" style="padding:12px 28px;background:var(--accent);border:none;border-radius:11px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.95rem;font-weight:700;color:#1a1a00;cursor:pointer;display:none;">🚪 Absen Keluar Sekarang</button>
+    <button onclick="tutupSuccess()" style="padding:12px 28px;background:var(--primary);border:none;border-radius:11px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.95rem;font-weight:700;color:#fff;cursor:pointer;">OK, Selesai</button>
+  </div>
 </div>
 
 <!-- HEADER -->
@@ -192,6 +195,30 @@ body{padding-bottom:60px;}
   <div id="riwayatList"><div class="empty-state">Belum ada riwayat.</div></div>
 </div>
 
+<!-- ABSEN KELUAR — muncul otomatis setelah absen masuk berhasil -->
+<div class="card" id="cardKeluar" style="display:none;">
+  <div style="text-align:center;margin-bottom:14px;">
+    <div style="font-size:2.2rem;">🚪</div>
+    <h2 style="justify-content:center;margin-bottom:4px;">Absen Keluar</h2>
+    <p style="font-size:0.8rem;color:var(--muted);">Sudah selesai kerja? Catat jam pulang Anda.</p>
+  </div>
+  <div style="background:#1a2a1e;border-radius:11px;padding:12px 14px;margin-bottom:14px;font-size:0.84rem;">
+    <div style="color:var(--muted);font-size:0.72rem;margin-bottom:3px;">KARYAWAN</div>
+    <div style="font-weight:700;font-size:1rem;" id="keluarNamaInfo">-</div>
+    <div style="color:var(--muted);font-size:0.78rem;" id="keluarTglInfo">-</div>
+  </div>
+  <div class="fg">
+    <label>Jam Keluar</label>
+    <input type="time" id="inpJamKeluar" style="font-size:1.3rem;font-weight:700;text-align:center;">
+  </div>
+  <button class="submit-btn" id="keluarBtn" onclick="kirimKeluar()" style="background:var(--accent);color:#1a1a00;">
+    🚪 Catat Jam Pulang
+  </button>
+  <button onclick="sembunyiKeluar()" style="width:100%;margin-top:8px;padding:9px;background:transparent;border:1px solid var(--border);border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.82rem;color:var(--muted);cursor:pointer;">
+    Nanti saja
+  </button>
+</div>
+
 
 
 <script>
@@ -200,6 +227,8 @@ let scriptUrl = 'https://script.google.com/macros/s/AKfycbwyfAChilmsgmCeMEW4YGgw
 let statusPilih = 'Hadir';
 let karyawanList = [];
 let riwayat = JSON.parse(localStorage.getItem('riwayatAbsen') || '[]');
+let lastAbsenNama = ''; // simpan nama & tanggal terakhir absen masuk
+let lastAbsenTgl = '';
 
 // ===== UTILS =====
 function toast(msg, dur=2500){const e=document.getElementById('toast');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',dur);}
@@ -339,7 +368,7 @@ async function kirimAbsen(){
 
   if(res&&res.success){
     // Simpan ke riwayat lokal
-    riwayat.unshift({nama,tanggal:tgl,status:statusPilih,masuk,keluar,catatan,timestamp:new Date().toLocaleString('id-ID')});
+    riwayat.unshift({nama,tanggal:tgl,status:statusPilih,masuk,keluar:'',catatan,timestamp:new Date().toLocaleString('id-ID')});
     if(riwayat.length>30)riwayat=riwayat.slice(0,30);
     localStorage.setItem('riwayatAbsen',JSON.stringify(riwayat));
     renderRiwayat();
@@ -349,11 +378,24 @@ async function kirimAbsen(){
     document.getElementById('inpCatatan').value='';
     document.getElementById('inpMasuk').value=pad(new Date().getHours())+':'+pad(new Date().getMinutes());
 
+    // Simpan data absen masuk terakhir untuk absen keluar
+    lastAbsenNama=nama;
+    lastAbsenTgl=tgl;
+
     // Tampilkan success
     const ico=statusPilih==='Hadir'?'✅':statusPilih==='Izin'?'🟡':'❌';
     document.getElementById('successIco').textContent=ico;
-    document.getElementById('successTitle').textContent=statusPilih==='Hadir'?'Absensi Berhasil!':statusPilih==='Izin'?'Izin Tercatat!':'Ketidakhadiran Tercatat!';
+    document.getElementById('successTitle').textContent=statusPilih==='Hadir'?'Absensi Masuk Berhasil!':statusPilih==='Izin'?'Izin Tercatat!':'Ketidakhadiran Tercatat!';
     document.getElementById('successMsg').textContent=`${nama} — ${fmtTgl(tgl)}\nStatus: ${statusPilih}`;
+
+    // Tampilkan tombol absen keluar hanya jika status Hadir
+    const btnKeluar=document.getElementById('btnKeluarNow');
+    if(statusPilih==='Hadir'){
+      btnKeluar.style.display='block';
+    } else {
+      btnKeluar.style.display='none';
+    }
+
     document.getElementById('successOv').classList.add('show');
   } else {
     toast('⚠️ '+(res&&res.error?res.error:'Gagal mengirim. Coba lagi.'));
@@ -362,6 +404,24 @@ async function kirimAbsen(){
 
 function tutupSuccess(){
   document.getElementById('successOv').classList.remove('show');
+}
+
+function tampilKeluarDariSuccess(){
+  // Tutup success overlay
+  document.getElementById('successOv').classList.remove('show');
+  // Isi data keluar otomatis dari absen masuk terakhir
+  const now=new Date();
+  document.getElementById('inpJamKeluar').value=pad(now.getHours())+':'+pad(now.getMinutes());
+  document.getElementById('keluarNamaInfo').textContent=lastAbsenNama;
+  document.getElementById('keluarTglInfo').textContent=fmtTgl(lastAbsenTgl);
+  // Tampilkan card keluar
+  const card=document.getElementById('cardKeluar');
+  card.style.display='block';
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function sembunyiKeluar(){
+  document.getElementById('cardKeluar').style.display='none';
 }
 
 // ===== RIWAYAT =====
@@ -385,11 +445,48 @@ function renderRiwayat(){
     </div>`).join('');
 }
 
+// ===== ABSEN KELUAR =====
+async function kirimKeluar(){
+  const nama=lastAbsenNama;
+  const tanggal=lastAbsenTgl;
+  const keluar=document.getElementById('inpJamKeluar').value;
+
+  if(!nama||!tanggal){toast('⚠️ Data absen tidak ditemukan!');return;}
+  if(!keluar){toast('⚠️ Isi jam keluar!');return;}
+
+  const btn=document.getElementById('keluarBtn');
+  btn.disabled=true;btn.classList.add('loading-btn');btn.textContent='Menyimpan...';
+
+  const res=await apiPost({action:'updateKeluar',nama,tanggal,keluar});
+
+  btn.disabled=false;btn.classList.remove('loading-btn');btn.textContent='🚪 Catat Jam Pulang';
+
+  if(res&&res.success){
+    // Update riwayat lokal
+    const idx=riwayat.findIndex(r=>r.nama===nama&&r.tanggal===tanggal);
+    if(idx>-1){riwayat[idx].keluar=keluar;localStorage.setItem('riwayatAbsen',JSON.stringify(riwayat));renderRiwayat();}
+    // Sembunyikan card keluar
+    document.getElementById('cardKeluar').style.display='none';
+    // Tampilkan success keluar
+    document.getElementById('btnKeluarNow').style.display='none';
+    document.getElementById('successIco').textContent='🚪';
+    document.getElementById('successTitle').textContent='Jam Pulang Tercatat!';
+    document.getElementById('successMsg').textContent=`${nama} — ${fmtTgl(tanggal)}\nJam Pulang: ${keluar}`;
+    document.getElementById('successOv').classList.add('show');
+    // Reset last absen
+    lastAbsenNama='';lastAbsenTgl='';
+  } else {
+    toast('⚠️ '+(res&&res.error?res.error:'Gagal. Coba lagi.'));
+  }
+}
+
 // ===== INIT =====
 async function init(){
   const now=new Date();
   document.getElementById('inpTgl').value=today();
   document.getElementById('inpMasuk').value=pad(now.getHours())+':'+pad(now.getMinutes());
+  document.getElementById('inpTglKeluar').value=today();
+  document.getElementById('inpJamKeluar').value=pad(now.getHours())+':'+pad(now.getMinutes());
 
   renderRiwayat();
   await loadKaryawan();
