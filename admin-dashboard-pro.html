@@ -317,52 +317,102 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#faf7ee;}
 
 <!-- KONEKSI SHEETS -->
 <div class="tab-section" id="tab-koneksi">
-  <div class="section-title">🔗 Koneksi Google Sheets</div>
+  <div class="section-title">🔗 Import Data Google Sheets</div>
 
+  <!-- CARA IMPORT -->
+  <div class="info-box" style="margin-bottom:18px;">
+    <h4>📥 Cara Import Data dari Google Sheets</h4>
+    <p>Karena batasan keamanan browser, data Sheets tidak bisa diambil otomatis. Gunakan cara manual berikut — hanya 3 langkah mudah:</p>
+  </div>
+
+  <div class="step-list" style="margin-bottom:22px;">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Buka Google Sheets Anda</h4>
+        <p>Buka Sheets yang terhubung ke Google Form absensi. Pastikan semua data sudah masuk.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Download sebagai CSV</h4>
+        <p>Klik menu <strong>File → Download → Comma Separated Values (.csv)</strong> → file CSV tersimpan di HP/komputer Anda.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Upload CSV di sini</h4>
+        <p>Klik tombol <strong>"📂 Pilih File CSV"</strong> di bawah → pilih file yang baru didownload → data langsung masuk ke dashboard!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD BOX -->
   <div class="connect-box" id="connectBox">
-    <h3>🔗 Hubungkan Google Sheets</h3>
-    <p>Masukkan link Google Sheets yang terhubung ke Google Form absensi Anda.<br>Data dari karyawan akan otomatis terbaca di dashboard ini.</p>
+    <h3>📂 Import File CSV</h3>
+    <p>Download file CSV dari Google Sheets lalu upload di sini.</p>
     <div id="connectStatus" style="margin-bottom:14px;font-size:0.83rem;color:var(--muted);">
-      <span class="status-dot" id="statusDot"></span><span id="statusTxt">Belum terhubung</span>
+      <span class="status-dot" id="statusDot"></span><span id="statusTxt">Belum ada data diimport</span>
     </div>
-    <input class="sheets-url-input" type="url" id="sheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/XXXXXXX/...">
-    <br>
+
+    <!-- DROP ZONE -->
+    <div id="dropZone" style="border:2px dashed var(--border);border-radius:12px;padding:32px 20px;margin-bottom:16px;cursor:pointer;transition:all 0.2s;background:#faf8f3;position:relative;"
+      ondragover="event.preventDefault();this.style.borderColor='var(--hadir)';this.style.background='#f0fbf4';"
+      ondragleave="this.style.borderColor='var(--border)';this.style.background='#faf8f3';"
+      ondrop="handleDrop(event)">
+      <input type="file" id="csvInput" accept=".csv" onchange="importCSV(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;">
+      <div style="font-size:2.5rem;margin-bottom:10px;">📄</div>
+      <div style="font-weight:700;font-size:0.95rem;color:var(--primary);margin-bottom:4px;">Tap / Drag & Drop file CSV di sini</div>
+      <div style="font-size:0.8rem;color:var(--muted);">Format: file .csv dari Google Sheets</div>
+    </div>
+
     <div class="btn-row" style="justify-content:center;">
-      <button class="btn btn-p" onclick="connectSheets()">🔗 Hubungkan</button>
-      <button class="btn btn-a" onclick="syncSheets()">🔄 Sync Sekarang</button>
-      <button class="btn btn-d" onclick="disconnectSheets()">✕ Putuskan</button>
+      <button class="btn btn-p" onclick="document.getElementById('csvInput').click()">📂 Pilih File CSV</button>
+      <button class="btn btn-a" onclick="syncSheets()">🔄 Re-import Ulang</button>
+      <button class="btn btn-d" onclick="disconnectSheets()">🗑️ Hapus Data Import</button>
     </div>
   </div>
 
-  <div class="warn-box">
-    <h4>⚠️ Syarat agar Google Sheets bisa dibaca:</h4>
-    <p>Google Sheets harus diatur <strong>"Anyone with the link can view"</strong> (siapa saja yang punya link bisa lihat). Caranya:<br>
-    Buka Sheets → Klik tombol <strong>Share</strong> → Ubah akses ke <strong>"Anyone with the link"</strong> → pilih <strong>Viewer</strong> → Klik Done.</p>
+  <!-- PREVIEW IMPORT -->
+  <div id="importPreview" style="display:none;">
+    <div class="warn-box" id="importInfo" style="margin-bottom:16px;">
+      <h4 id="importInfoTitle">✅ Import Berhasil</h4>
+      <p id="importInfoText"></p>
+    </div>
   </div>
 
+  <!-- PENGATURAN KOLOM -->
   <div class="form-card">
-    <h2>⚙️ Pengaturan Kolom Google Sheets</h2>
-    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:14px;">Sesuaikan urutan kolom Google Form Anda (kolom A = 1, B = 2, dst)</p>
+    <h2>⚙️ Sesuaikan Kolom Google Form</h2>
+    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:14px;">
+      Sesuaikan nomor kolom sesuai urutan pertanyaan di Google Form Anda.<br>
+      <strong>Kolom 1 = Timestamp (otomatis), Kolom 2 = pertanyaan pertama, dst.</strong>
+    </p>
     <div class="form-row">
       <div class="fg"><label>Kolom Nama</label><input type="number" id="colNama" value="2" min="1"></div>
       <div class="fg"><label>Kolom Tanggal</label><input type="number" id="colTgl" value="3" min="1"></div>
       <div class="fg"><label>Kolom Status</label><input type="number" id="colStatus" value="4" min="1"></div>
       <div class="fg"><label>Kolom Jam Masuk</label><input type="number" id="colMasuk" value="5" min="1"></div>
       <div class="fg"><label>Kolom Jam Keluar</label><input type="number" id="colKeluar" value="6" min="1"></div>
-      <div class="fg"><label>Kolom Foto</label><input type="number" id="colFoto" value="7" min="1"></div>
-      <div class="fg"><label>Kolom Catatan</label><input type="number" id="colCatatan" value="8" min="1"></div>
+      <div class="fg"><label>Kolom Catatan</label><input type="number" id="colCatatan" value="7" min="1"></div>
     </div>
-    <div class="btn-row"><button class="btn btn-p" onclick="simpanKolom()">💾 Simpan Pengaturan</button></div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="simpanKolom()">💾 Simpan & Terapkan</button>
+    </div>
   </div>
 
+  <!-- TABLE PREVIEW -->
   <div class="table-card">
-    <div class="th2"><h2>Data dari Google Sheets</h2>
+    <div class="th2">
+      <h2>Preview Data yang Diimport</h2>
       <span id="jmlSheets" style="font-size:0.8rem;color:var(--muted);"></span>
     </div>
     <div style="overflow-x:auto;">
       <table>
         <thead><tr><th>#</th><th>Timestamp</th><th>Nama</th><th>Tanggal</th><th>Status</th><th>Jam Masuk</th><th>Catatan</th></tr></thead>
-        <tbody id="tbSheets"><tr class="empty-row"><td colspan="7">Belum ada data dari Sheets</td></tr></tbody>
+        <tbody id="tbSheets"><tr class="empty-row"><td colspan="7">Belum ada data diimport</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -479,7 +529,7 @@ function init(){
   document.getElementById('fTgl').value=today();
   const bln2=String(now.getMonth()+1).padStart(2,'0');
   document.getElementById('fBulan').value=`${now.getFullYear()}-${bln2}`;
-  if(sheetsUrl)document.getElementById('sheetsUrl').value=sheetsUrl;
+  if(sheetsData.length>0)updateConnectStatus();
   document.getElementById('colNama').value=colConfig.nama;
   document.getElementById('colTgl').value=colConfig.tgl;
   document.getElementById('colStatus').value=colConfig.status;
@@ -707,73 +757,103 @@ function renderDashboard(){
   topEl.innerHTML=sorted.map(([nama,hh],i)=>`<div style="margin-bottom:9px;"><div style="display:flex;justify-content:space-between;font-size:0.83rem;margin-bottom:3px;"><span>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]} <strong>${nama}</strong></span><span style="color:var(--hadir);font-weight:700;">${hh}hr</span></div><div style="height:7px;background:#eee8d8;border-radius:4px;"><div style="height:100%;width:${(hh/maxH2)*100}%;background:var(--hadir);border-radius:4px;"></div></div></div>`).join('');
 }
 
-// ===== GOOGLE SHEETS KONEKSI =====
+// ===== CSV IMPORT =====
 function updateConnectStatus(){
   const dot=document.getElementById('statusDot');
   const txt=document.getElementById('statusTxt');
   const box=document.getElementById('connectBox');
-  if(sheetsUrl&&sheetsData.length>0){
-    dot.classList.add('on');txt.textContent=`Terhubung • ${sheetsData.length} baris data`;
+  if(sheetsData.length>0){
+    dot.classList.add('on');
+    txt.textContent=`✅ ${sheetsData.length} baris data sudah diimport`;
     box.classList.add('connected');
-  } else if(sheetsUrl){
-    dot.classList.remove('on');txt.textContent='URL tersimpan, belum sync';
-    box.classList.remove('connected');
+    const prev=document.getElementById('importPreview');
+    if(prev){prev.style.display='block';
+      document.getElementById('importInfoTitle').textContent='✅ Data Tersimpan';
+      document.getElementById('importInfoText').textContent=`${sheetsData.length} baris data absensi dari Google Sheets sudah berhasil diimport dan digabungkan dengan data manual.`;
+    }
   } else {
-    dot.classList.remove('on');txt.textContent='Belum terhubung';
+    dot.classList.remove('on');
+    txt.textContent='Belum ada data diimport';
     box.classList.remove('connected');
   }
 }
 
-function connectSheets(){
-  const url=document.getElementById('sheetsUrl').value.trim();
-  if(!url){toast('⚠️ Masukkan link Google Sheets!');return;}
-  if(!url.includes('docs.google.com/spreadsheets')){toast('⚠️ Link tidak valid! Harus link Google Sheets.');return;}
-  sheetsUrl=url;save();updateConnectStatus();
-  toast('✅ Link tersimpan! Klik Sync untuk ambil data.');
-  syncSheets();
+function handleDrop(event){
+  event.preventDefault();
+  document.getElementById('dropZone').style.borderColor='var(--border)';
+  document.getElementById('dropZone').style.background='#faf8f3';
+  const file=event.dataTransfer.files[0];
+  if(file&&file.name.endsWith('.csv')){
+    readCSVFile(file);
+  } else {
+    toast('⚠️ Hanya file .csv yang diterima!');
+  }
 }
 
-async function syncSheets(){
-  if(!sheetsUrl){toast('⚠️ Hubungkan Google Sheets dulu!');return;}
-  toast('🔄 Mengambil data dari Google Sheets...',4000);
-  try {
-    // Extract spreadsheet ID
-    const match=sheetsUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if(!match){toast('⚠️ Link Sheets tidak valid!');return;}
-    const sheetId=match[1];
-    // Use CSV export endpoint (works for public sheets)
-    const csvUrl=`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
-    const resp=await fetch(csvUrl);
-    if(!resp.ok)throw new Error('Gagal fetch');
-    const csv=await resp.text();
-    const rows=parseCSV(csv);
-    if(rows.length<=1){toast('⚠️ Sheets kosong atau tidak bisa diakses.');return;}
-    sheetsData=rows.slice(1); // skip header
-    save();updateConnectStatus();renderSheetsTable();renderDashboard();renderHarian();
-    toast(`✅ Berhasil sync! ${sheetsData.length} data absensi diambil.`);
-  } catch(e){
-    toast('⚠️ Gagal terhubung. Pastikan Sheets sudah diatur "Anyone with the link can view".');
-  }
+function importCSV(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  readCSVFile(file);
+}
+
+function readCSVFile(file){
+  toast('📂 Membaca file CSV...',2000);
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const text=e.target.result;
+      const rows=parseCSV(text);
+      if(rows.length<=1){toast('⚠️ File CSV kosong atau tidak valid!');return;}
+      sheetsData=rows.slice(1).filter(r=>r.some(c=>c.trim()));
+      save();
+      updateConnectStatus();
+      renderSheetsTable();
+      renderDashboard();
+      renderHarian();
+      toast(`✅ Berhasil import ${sheetsData.length} data absensi!`);
+      document.getElementById('importPreview').style.display='block';
+      document.getElementById('importInfoTitle').textContent='✅ Import Berhasil!';
+      document.getElementById('importInfoText').textContent=`${sheetsData.length} baris data dari "${file.name}" berhasil diimport. Data sudah digabung dengan data manual di Dashboard, Rekap Harian, dan Laporan.`;
+    } catch(err){
+      toast('⚠️ Gagal membaca file. Pastikan file adalah CSV yang valid.');
+    }
+  };
+  reader.readAsText(file);
 }
 
 function parseCSV(text){
-  const rows=[];const lines=text.split('\n');
+  const rows=[];
+  const lines=text.split('\n');
   lines.forEach(line=>{
+    if(!line.trim())return;
     const row=[];let cur='';let inQ=false;
     for(let i=0;i<line.length;i++){
-      if(line[i]==='"'){inQ=!inQ;}
-      else if(line[i]===','&&!inQ){row.push(cur.trim());cur='';}
-      else cur+=line[i];
+      const ch=line[i];
+      if(ch==='"'){inQ=!inQ;}
+      else if(ch===','&&!inQ){row.push(cur.trim().replace(/^"|"$/g,''));cur='';}
+      else cur+=ch;
     }
-    row.push(cur.trim());if(row.some(c=>c))rows.push(row);
+    row.push(cur.trim().replace(/^"|"$/g,''));
+    if(row.some(c=>c))rows.push(row);
   });
   return rows;
 }
 
+function syncSheets(){
+  // Re-trigger file input for re-import
+  document.getElementById('csvInput').click();
+}
+
 function disconnectSheets(){
-  if(!confirm('Putuskan koneksi Sheets? Data yang sudah disync akan dihapus.'))return;
-  sheetsUrl='';sheetsData=[];save();document.getElementById('sheetsUrl').value='';
-  updateConnectStatus();renderSheetsTable();renderDashboard();toast('✅ Koneksi diputus.');
+  if(!confirm('Hapus semua data yang sudah diimport?'))return;
+  sheetsData=[];save();
+  updateConnectStatus();
+  renderSheetsTable();
+  renderDashboard();
+  renderHarian();
+  document.getElementById('importPreview').style.display='none';
+  document.getElementById('csvInput').value='';
+  toast('🗑️ Data import dihapus.');
 }
 
 function simpanKolom(){
@@ -783,10 +863,14 @@ function simpanKolom(){
     status:parseInt(document.getElementById('colStatus').value),
     masuk:parseInt(document.getElementById('colMasuk').value),
     keluar:parseInt(document.getElementById('colKeluar').value),
-    foto:parseInt(document.getElementById('colFoto').value),
+    foto:6,
     catatan:parseInt(document.getElementById('colCatatan').value),
   };
-  save();toast('✅ Pengaturan kolom disimpan!');
+  save();
+  renderSheetsTable();
+  renderDashboard();
+  renderHarian();
+  toast('✅ Pengaturan kolom disimpan & diterapkan!');
 }
 
 function renderSheetsTable(){
