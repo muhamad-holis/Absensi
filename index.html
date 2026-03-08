@@ -112,13 +112,7 @@ body{padding-bottom:60px;}
   </div>
 </div>
 
-<!-- SETUP URL (tersembunyi, muncul lewat tombol gear) -->
-<div class="setup-card" id="setupCard">
-  <h2 style="font-size:0.9rem;margin-bottom:10px;">⚙️ URL Apps Script</h2>
-  <p style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">Minta URL dari admin lalu paste di sini.</p>
-  <input class="url-inp" type="url" id="scriptUrl" placeholder="https://script.google.com/macros/s/XXXXX/exec">
-  <button class="url-btn" onclick="simpanUrl()">💾 Simpan & Hubungkan</button>
-</div>
+<!-- URL sudah terpasang otomatis -->
 
 <!-- CLOCK -->
 <div class="clock-box">
@@ -188,8 +182,7 @@ body{padding-bottom:60px;}
   <!-- NO CONNECTION -->
   <div id="noConn" style="display:none;text-align:center;padding:20px;">
     <div style="font-size:2.5rem;margin-bottom:10px;">🔌</div>
-    <p style="font-size:0.84rem;color:var(--muted);margin-bottom:14px;">Belum terhubung ke sistem.<br>Minta URL dari admin.</p>
-    <button onclick="toggleSetup()" style="padding:9px 20px;background:var(--primary);border:none;border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.84rem;font-weight:700;color:#0a1a0e;cursor:pointer;">⚙️ Masukkan URL</button>
+    <p style="font-size:0.84rem;color:var(--muted);">Gagal terhubung ke sistem.<br>Hubungi admin.</p>
   </div>
 </div>
 
@@ -199,12 +192,11 @@ body{padding-bottom:60px;}
   <div id="riwayatList"><div class="empty-state">Belum ada riwayat.</div></div>
 </div>
 
-<!-- GEAR BUTTON -->
-<div class="gear-btn" onclick="toggleSetup()" title="Pengaturan URL">⚙️</div>
+
 
 <script>
 // ===== STATE =====
-let scriptUrl = localStorage.getItem('karyawanScriptUrl') || '';
+let scriptUrl = 'https://script.google.com/macros/s/AKfycbwyfAChilmsgmCeMEW4YGgwRTz5isl-ts9un8rlMS1zasX4797o0gwsJ4H2cAsgcLND/exec';
 let statusPilih = 'Hadir';
 let karyawanList = [];
 let riwayat = JSON.parse(localStorage.getItem('riwayatAbsen') || '[]');
