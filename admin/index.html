@@ -244,8 +244,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:#faf7ee;}
   </div>
   <div class="sg" id="sumHarian"></div>
   <div class="tc"><div style="overflow-x:auto;">
-    <table><thead><tr><th>#</th><th>Nama</th><th>Status</th><th>Masuk</th><th>Keluar</th><th>Catatan</th><th>Upah</th><th>Sumber</th></tr></thead>
-    <tbody id="tbH"><tr class="er"><td colspan="8">Pilih tanggal</td></tr></tbody></table>
+    <table><thead><tr><th>#</th><th>Nama</th><th>Status</th><th>Masuk</th><th>Keluar</th><th>Catatan</th><th>Upah</th><th>Sumber</th><th>Aksi</th></tr></thead>
+    <tbody id="tbH"><tr class="er"><td colspan="9">Pilih tanggal</td></tr></tbody></table>
   </div></div>
 </div>
 
@@ -526,12 +526,24 @@ async function refreshData(){
     renderKaryawan();populateSelect();
     updateConnStatus(true);
   }
-  // Ambil absensi bulan ini
+  // Ambil absensi — bulan yang sedang dipilih di filter + bulan ini
   const now=new Date();
-  const bulan=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const resA=await apiGet({action:'getAbsensi',bulan});
+  const bulanIni=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const fBln=document.getElementById('fBln')?.value||bulanIni;
+  const bulanFetch=fBln||bulanIni;
+  // Fetch bulan ini
+  const resA=await apiGet({action:'getAbsensi',bulan:bulanIni});
   if(resA&&resA.absensi){absensiOnline=resA.absensi;}
-  renderDashboard();renderHarian();
+  // Jika bulan filter berbeda, tambahkan juga
+  if(fBln&&fBln!==bulanIni){
+    const resA2=await apiGet({action:'getAbsensi',bulan:fBln});
+    if(resA2&&resA2.absensi){
+      // Merge, hindari duplikat
+      const existing=new Set(absensiOnline.map(a=>`${a.nama}_${a.tanggal}`));
+      resA2.absensi.forEach(a=>{if(!existing.has(`${a.nama}_${a.tanggal}`))absensiOnline.push(a);});
+    }
+  }
+  renderDashboard();renderHarian();renderLaporan();
   toast('✅ Data diperbarui!');
 }
 
@@ -579,7 +591,7 @@ async function hapusKaryawan(id){
   else toast('⚠️ Gagal menghapus.');
 }
 function renderKaryawan(){
-  document.getElementById('jmlK').textContent=`Total: ${karyawanList.length} karyawan`+(isConnected()?'<span class="online-badge">🟢 Online</span>':'');
+  document.getElementById('jmlK').innerHTML=`Total: ${karyawanList.length} karyawan`+(isConnected()?'<span class="online-badge">🟢 Online</span>':'');
   const tb=document.getElementById('tbK');
   if(!karyawanList.length){tb.innerHTML='<tr class="er"><td colspan="6">Belum ada karyawan. Tambah di atas!</td></tr>';return;}
   tb.innerHTML=karyawanList.map((k,i)=>`<tr><td>${i+1}</td><td><strong>${k.nama}</strong></td><td>${k.jabatan}</td><td>${fmt(k.upah)}</td><td>${k.hp||'-'}</td><td><button class="btn bd bsm" onclick="hapusKaryawan('${k.id}')">Hapus</button></td></tr>`).join('');
@@ -640,8 +652,47 @@ function renderHarian(){
   const tU=data.reduce((s,a)=>s+(a.upah||0),0);
   document.getElementById('sumHarian').innerHTML=`<div class="sc g"><label>Hadir</label><div class="v">${h}</div></div><div class="sc r"><label>Tidak Hadir</label><div class="v">${ab}</div></div><div class="sc"><label>Izin</label><div class="v">${iz}</div></div><div class="sc b"><label>Total Upah</label><div class="v sm">${fmt(tU)}</div></div>`;
   const tb=document.getElementById('tbH');
-  if(!data.length){tb.innerHTML='<tr class="er"><td colspan="8">Tidak ada data</td></tr>';return;}
-  tb.innerHTML=data.map((a,i)=>`<tr><td>${i+1}</td><td><strong>${a.nama}</strong></td><td><span class="badge ${a.status==='Hadir'?'bh':a.status==='Izin'?'biz':'bab'}">${a.status}</span></td><td>${a.masuk||'-'}</td><td>${a.keluar||'-'}</td><td>${a.catatan||'-'}</td><td>${fmt(a.upah||0)}</td><td><span style="font-size:0.7rem;background:${a.sumber==='Online'?'#d4f0e0':'#fff2d4'};color:${a.sumber==='Online'?'var(--hadir)':'var(--izin)'};padding:2px 7px;border-radius:10px;font-weight:700;">${a.sumber}</span></td></tr>`).join('');
+  if(!data.length){tb.innerHTML='<tr class="er"><td colspan="9">Tidak ada data</td></tr>';return;}
+  tb.innerHTML=data.map((a,i)=>{
+    const sudahKeluar=a.keluar&&a.keluar!=='-';
+    const tombolKeluar=a.status==='Hadir'&&!sudahKeluar
+      ?`<button class="btn bg bsm" onclick="absenKeluar('${a.nama}','${a.tanggal}','${a.sumber}')">🕐 Keluar</button>`
+      :(a.status==='Hadir'?`<span style="font-size:0.75rem;color:var(--hadir);">✅ ${a.keluar}</span>`:'-');
+    return`<tr>
+      <td>${i+1}</td><td><strong>${a.nama}</strong></td>
+      <td><span class="badge ${a.status==='Hadir'?'bh':a.status==='Izin'?'biz':'bab'}">${a.status}</span></td>
+      <td>${a.masuk||'-'}</td><td>${a.keluar&&a.keluar!=='-'?a.keluar:'-'}</td>
+      <td>${a.catatan||'-'}</td><td>${fmt(a.upah||0)}</td>
+      <td><span style="font-size:0.7rem;background:${a.sumber==='Online'?'#d4f0e0':'#fff2d4'};color:${a.sumber==='Online'?'var(--hadir)':'var(--izin)'};padding:2px 7px;border-radius:10px;font-weight:700;">${a.sumber}</span></td>
+      <td>${tombolKeluar}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== ABSEN KELUAR =====
+async function absenKeluar(nama, tanggal, sumber){
+  const now=new Date();
+  const jamDefault=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const jamKeluar=prompt(`Jam keluar ${nama}:`, jamDefault);
+  if(jamKeluar===null)return; // batal
+  if(!jamKeluar.match(/^\d{2}:\d{2}$/)){toast('⚠️ Format jam salah! Gunakan HH:MM');return;}
+
+  if(sumber==='Online'&&isConnected()){
+    toast('💾 Menyimpan jam keluar...', 2000);
+    const res=await apiPost({action:'updateKeluar', nama, tanggal, keluar:jamKeluar});
+    if(res&&res.success){
+      const idx=absensiOnline.findIndex(a=>a.nama===nama&&a.tanggal===tanggal);
+      if(idx>-1)absensiOnline[idx].keluar=jamKeluar;
+      renderHarian();
+      toast(`✅ Jam keluar ${nama}: ${jamKeluar}`);
+    } else {
+      toast('⚠️ '+(res&&res.error?res.error:'Gagal menyimpan.'));
+    }
+  } else {
+    const idx=manualList.findIndex(a=>a.nama===nama&&a.tanggal===tanggal);
+    if(idx>-1){manualList[idx].keluar=jamKeluar;saveLocal();renderManual();renderHarian();toast(`✅ Jam keluar ${nama}: ${jamKeluar}`);}
+    else toast('⚠️ Data tidak ditemukan.');
+  }
 }
 
 // ===== LAPORAN =====
