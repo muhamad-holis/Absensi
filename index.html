@@ -36,6 +36,27 @@ body{padding-bottom:60px;}
 .fg select:focus,.fg input:focus{border-color:var(--primary);}
 .fg select option{background:#1a2a1e;}
 
+/* SEARCHABLE DROPDOWN */
+.search-dropdown{position:relative;width:100%;}
+.search-inp{padding:11px 13px;background:#0f1a14;border:1.5px solid var(--border);border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.9rem;color:var(--text);outline:none;width:100%;cursor:pointer;}
+.search-inp:focus{border-color:var(--primary);}
+.search-inp.selected{border-color:var(--primary);color:var(--primary);font-weight:700;}
+.dropdown-panel{display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;background:#1a2a1e;border:1.5px solid var(--primary);border-radius:12px;z-index:99;max-height:280px;overflow:hidden;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.dropdown-panel.open{display:flex;}
+.dropdown-search-wrap{padding:10px 10px 8px;border-bottom:1px solid var(--border);}
+.dropdown-search{width:100%;padding:9px 12px;background:#0f1a14;border:1.5px solid var(--border);border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;color:var(--text);outline:none;}
+.dropdown-search:focus{border-color:var(--primary);}
+.dropdown-list{overflow-y:auto;max-height:200px;}
+.dropdown-list::-webkit-scrollbar{width:4px;}
+.dropdown-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.dropdown-item{padding:11px 14px;font-size:0.88rem;cursor:pointer;color:var(--text);transition:background 0.15s;display:flex;align-items:center;gap:8px;}
+.dropdown-item:hover,.dropdown-item.focused{background:#213028;}
+.dropdown-item.selected-item{color:var(--primary);font-weight:700;}
+.dropdown-item .item-initial{width:28px;height:28px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0;color:var(--primary);}
+.dropdown-empty{padding:18px;text-align:center;color:var(--muted);font-size:0.82rem;}
+.dropdown-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.75rem;pointer-events:none;transition:transform 0.2s;}
+.dropdown-panel.open ~ .dropdown-arrow, .search-dropdown.open .dropdown-arrow{transform:translateY(-50%) rotate(180deg);}
+
 /* STATUS BUTTONS */
 .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px;}
 .st-btn{padding:12px 6px;border:2px solid var(--border);border-radius:11px;background:transparent;color:var(--muted);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.2s;text-align:center;}
@@ -136,9 +157,17 @@ body{padding-bottom:60px;}
   <div id="formContent" style="display:none;">
     <div class="fg">
       <label>Nama Karyawan</label>
-      <select id="selNama">
-        <option value="">-- Pilih Nama Anda --</option>
-      </select>
+      <div class="search-dropdown" id="namaDropdown">
+        <input type="text" class="search-inp" id="namaDisplay" placeholder="-- Pilih Nama Anda --" readonly onclick="toggleDropdown()" autocomplete="off">
+        <span class="dropdown-arrow">▼</span>
+        <div class="dropdown-panel" id="dropdownPanel">
+          <div class="dropdown-search-wrap">
+            <input type="text" class="dropdown-search" id="namaSearch" placeholder="🔍 Cari nama karyawan..." oninput="filterNama(this.value)">
+          </div>
+          <div class="dropdown-list" id="namaList"></div>
+        </div>
+      </div>
+      <input type="hidden" id="selNama">
     </div>
 
     <div class="fg">
@@ -288,6 +317,69 @@ function setConnStatus(on, msg){
   else{dot.classList.remove('on');txt.textContent=msg||'Tidak terhubung';}
 }
 
+// ===== SEARCHABLE DROPDOWN =====
+let dropdownOpen = false;
+
+function toggleDropdown(){
+  const panel = document.getElementById('dropdownPanel');
+  const wrap = document.getElementById('namaDropdown');
+  dropdownOpen = !dropdownOpen;
+  if(dropdownOpen){
+    panel.classList.add('open');
+    wrap.classList.add('open');
+    setTimeout(()=>document.getElementById('namaSearch').focus(), 100);
+  } else {
+    closeDropdown();
+  }
+}
+
+function closeDropdown(){
+  document.getElementById('dropdownPanel').classList.remove('open');
+  document.getElementById('namaDropdown').classList.remove('open');
+  document.getElementById('namaSearch').value = '';
+  filterNama('');
+  dropdownOpen = false;
+}
+
+function pilihNama(nama){
+  document.getElementById('selNama').value = nama;
+  const disp = document.getElementById('namaDisplay');
+  disp.value = nama;
+  disp.classList.add('selected');
+  closeDropdown();
+  // highlight item terpilih
+  document.querySelectorAll('.dropdown-item').forEach(el=>{
+    el.classList.toggle('selected-item', el.dataset.nama === nama);
+  });
+}
+
+function filterNama(q){
+  const list = document.getElementById('namaList');
+  const query = q.toLowerCase();
+  const filtered = karyawanList.filter(k=>k.nama.toLowerCase().includes(query));
+  if(!filtered.length){
+    list.innerHTML = '<div class="dropdown-empty">Nama tidak ditemukan 🤷</div>';
+    return;
+  }
+  const selected = document.getElementById('selNama').value;
+  list.innerHTML = filtered.map(k=>{
+    const initial = k.nama.charAt(0).toUpperCase();
+    const isSel = k.nama === selected;
+    return `<div class="dropdown-item${isSel?' selected-item':''}" data-nama="${k.nama}" onclick="pilihNama('${k.nama.replace(/'/g,"\\'")}')">
+      <div class="item-initial">${initial}</div>
+      <span>${k.nama}</span>
+      ${isSel?'<span style="margin-left:auto;font-size:0.8rem;">✓</span>':''}
+    </div>`;
+  }).join('');
+}
+
+// Tutup dropdown saat klik di luar
+document.addEventListener('click', function(e){
+  if(dropdownOpen && !document.getElementById('namaDropdown').contains(e.target)){
+    closeDropdown();
+  }
+});
+
 // ===== LOAD KARYAWAN =====
 async function loadKaryawan(){
   document.getElementById('loadingNama').style.display='block';
@@ -311,13 +403,8 @@ async function loadKaryawan(){
   }
 
   karyawanList=res.karyawan||[];
-  const sel=document.getElementById('selNama');
-  sel.innerHTML='<option value="">-- Pilih Nama Anda --</option>';
-  karyawanList.forEach(k=>{
-    const opt=document.createElement('option');
-    opt.value=k.nama;opt.textContent=k.nama;
-    sel.appendChild(opt);
-  });
+  // Isi list dropdown
+  filterNama('');
 
   document.getElementById('formContent').style.display='block';
   setConnStatus(true,`Terhubung • ${karyawanList.length} karyawan`);
@@ -375,6 +462,8 @@ async function kirimAbsen(){
 
     // Reset form
     document.getElementById('selNama').value='';
+    const disp=document.getElementById('namaDisplay');
+    disp.value='';disp.classList.remove('selected');
     document.getElementById('inpCatatan').value='';
     document.getElementById('inpMasuk').value=pad(new Date().getHours())+':'+pad(new Date().getMinutes());
 
@@ -485,7 +574,6 @@ async function init(){
   const now=new Date();
   document.getElementById('inpTgl').value=today();
   document.getElementById('inpMasuk').value=pad(now.getHours())+':'+pad(now.getMinutes());
-  document.getElementById('inpTglKeluar').value=today();
   document.getElementById('inpJamKeluar').value=pad(now.getHours())+':'+pad(now.getMinutes());
 
   renderRiwayat();
