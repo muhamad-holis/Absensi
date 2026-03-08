@@ -178,8 +178,12 @@ body{padding-bottom:60px;}
     </div>
 
     <div class="fg">
-      <label>Tanggal</label>
-      <input type="date" id="inpTgl" readonly style="opacity:0.7;cursor:default;">
+      <label>Tanggal <span style="color:var(--primary);font-size:0.65rem;font-weight:600;">● Otomatis hari ini</span></label>
+      <div class="jam-auto-box">
+        <div class="jam-val" id="tanggalDisplay" style="font-size:0.95rem;letter-spacing:0;">-</div>
+        <div class="jam-lock">🔒 Tanggal hari ini</div>
+      </div>
+      <input type="hidden" id="inpTgl">
     </div>
 
     <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:block;">Status Kehadiran</label>
@@ -303,7 +307,14 @@ function updateClock(){
   if(pl)pl.textContent=hms;
   const hari=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][now.getDay()];
   const bln=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][now.getMonth()];
-  document.getElementById('clockDate').textContent=`${hari}, ${now.getDate()} ${bln} ${now.getFullYear()}`;
+  const tglStr=`${hari}, ${now.getDate()} ${bln} ${now.getFullYear()}`;
+  document.getElementById('clockDate').textContent=tglStr;
+  // Update tanggal di form juga
+  const tglVal=today();
+  const tglEl=document.getElementById('inpTgl');
+  if(tglEl)tglEl.value=tglVal;
+  const tglDisp=document.getElementById('tanggalDisplay');
+  if(tglDisp)tglDisp.textContent=`${now.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'][now.getMonth()]} ${now.getFullYear()} — ${hari}`;
 }
 setInterval(updateClock,1000);
 updateClock();
@@ -627,7 +638,7 @@ function renderRiwayat(nama){
 
 // ===== INIT =====
 async function init(){
-  document.getElementById('inpTgl').value=today();
+  // tanggal & jam dihandle otomatis oleh updateClock()
   const state=getStateMasuk();
   if(state){
     namaAktif=state.nama;
