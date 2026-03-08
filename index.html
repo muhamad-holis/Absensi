@@ -82,7 +82,27 @@ body{padding-bottom:60px;}
 .pj-note{margin-top:8px;font-size:0.73rem;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:5px;}
 .pj-note .lock-ico{font-size:0.85rem;}
 
-/* RIWAYAT */
+/* SELFIE */
+.selfie-wrap{margin-bottom:12px;}
+.selfie-wrap label{font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;}
+.selfie-box{background:#0f1a14;border:1.5px dashed var(--border);border-radius:12px;overflow:hidden;position:relative;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;transition:border-color 0.2s;}
+.selfie-box:hover{border-color:var(--primary);}
+.selfie-box.has-photo{border-style:solid;border-color:var(--primary);}
+.selfie-box video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.selfie-box canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;}
+.selfie-box canvas.show{display:block;}
+.selfie-placeholder{display:flex;flex-direction:column;align-items:center;gap:6px;z-index:1;}
+.selfie-placeholder .cam-ico{font-size:2.5rem;}
+.selfie-placeholder p{font-size:0.78rem;color:var(--muted);text-align:center;}
+.selfie-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:2;display:none;}
+.selfie-box.has-photo .selfie-placeholder{display:none;}
+.selfie-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:7px;}
+.selfie-btns button{padding:9px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.8rem;font-weight:700;cursor:pointer;color:var(--muted);transition:all 0.2s;}
+.selfie-btns .btn-ambil{border-color:var(--primary);color:var(--primary);background:#1a3a24;}
+.selfie-btns .btn-ulang{border-color:var(--border);color:var(--muted);}
+.selfie-btns .btn-ulang:hover{border-color:var(--absen);color:var(--absen);}
+.cam-guide{position:absolute;inset:12px;border:2px solid rgba(46,204,113,0.4);border-radius:50%;pointer-events:none;z-index:3;}
+.selfie-req-note{font-size:0.7rem;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:4px;}
 .riwayat-item{background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:9px;}
 .ri-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .ri-nama{font-weight:700;font-size:0.9rem;}
@@ -181,6 +201,25 @@ body{padding-bottom:60px;}
         <div class="jam-val" id="jamMasukPreview">--:--</div>
         <div class="jam-lock">🔒 Tidak bisa diubah<br>Dicatat saat tombol ditekan</div>
       </div>
+    </div>
+
+    <!-- SELFIE -->
+    <div class="selfie-wrap" id="selfieSection">
+      <label>Foto Selfie <span style="color:var(--primary);font-size:0.65rem;font-weight:600;">● Wajib saat Hadir</span></label>
+      <div class="selfie-box" id="selfieBox" onclick="mulaiKamera()">
+        <video id="selfieVideo" autoplay playsinline muted></video>
+        <canvas id="selfieCanvas"></canvas>
+        <div class="cam-guide" id="camGuide" style="display:none;"></div>
+        <div class="selfie-placeholder" id="selfiePlaceholder">
+          <div class="cam-ico">📷</div>
+          <p>Ketuk untuk buka kamera<br>dan ambil selfie</p>
+        </div>
+      </div>
+      <div class="selfie-btns" id="selfieBtns" style="display:none;">
+        <button class="btn-ambil" id="btnAmbil" onclick="ambilFoto()">📸 Ambil Foto</button>
+        <button class="btn-ulang" id="btnUlang" onclick="ulangFoto()" style="display:none;">🔄 Ulangi</button>
+      </div>
+      <div class="selfie-req-note" id="selfieNote">⚠️ Foto diperlukan untuk absen Hadir</div>
     </div>
 
     <div class="fg">
@@ -335,7 +374,10 @@ function pilihStatus(status,btn){
   statusPilih=status;
   document.querySelectorAll('.st-btn').forEach(b=>b.classList.remove('sel'));
   btn.classList.add('sel');
-  document.getElementById('jamMasukSection').style.opacity=status==='Hadir'?'1':'0.4';
+  const isHadir=status==='Hadir';
+  document.getElementById('jamMasukSection').style.opacity=isHadir?'1':'0.4';
+  document.getElementById('selfieSection').style.display=isHadir?'block':'none';
+  if(!isHadir) stopKamera();
 }
 
 // ===== MODE SWITCH =====
@@ -345,8 +387,10 @@ function tampilModeMasuk(){
   document.getElementById('headerLogo').textContent='📋';
   document.getElementById('headerTitle').textContent='Absensi Karyawan';
   document.getElementById('headerSub').textContent='Isi setiap hari kerja';
+  resetSelfie();
 }
 function tampilModePulang(data){
+  stopKamera();
   document.getElementById('cardMasuk').style.display='none';
   document.getElementById('cardPulang').style.display='block';
   document.getElementById('headerLogo').textContent='🚪';
@@ -366,6 +410,91 @@ function getStateMasuk(){
   return d;
 }
 
+// ===== SELFIE / KAMERA =====
+let streamKamera=null;
+let fotoBase64='';
+
+async function mulaiKamera(){
+  if(fotoBase64)return; // sudah ada foto, tidak buka kamera lagi
+  if(streamKamera)return; // sudah berjalan
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false
+    });
+    streamKamera=stream;
+    const video=document.getElementById('selfieVideo');
+    video.srcObject=stream;
+    document.getElementById('camGuide').style.display='block';
+    document.getElementById('selfieBtns').style.display='grid';
+    document.getElementById('btnAmbil').style.display='block';
+    document.getElementById('btnUlang').style.display='none';
+    document.getElementById('selfieNote').style.display='none';
+    // nonaktifkan klik box agar tidak restart kamera
+    document.getElementById('selfieBox').onclick=null;
+  }catch(err){
+    toast('⚠️ Tidak bisa akses kamera. Izinkan akses kamera di browser.');
+  }
+}
+
+function ambilFoto(){
+  const video=document.getElementById('selfieVideo');
+  const canvas=document.getElementById('selfieCanvas');
+  canvas.width=video.videoWidth||640;
+  canvas.height=video.videoHeight||480;
+  const ctx=canvas.getContext('2d');
+  // Mirror efek (karena selfie)
+  ctx.translate(canvas.width,0);
+  ctx.scale(-1,1);
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  fotoBase64=canvas.toDataURL('image/jpeg',0.6);
+  // Tampilkan hasil foto
+  canvas.classList.add('show');
+  document.getElementById('selfieBox').classList.add('has-photo');
+  document.getElementById('camGuide').style.display='none';
+  // Hentikan kamera
+  stopKamera();
+  // Update tombol
+  document.getElementById('btnAmbil').style.display='none';
+  document.getElementById('btnUlang').style.display='block';
+  document.getElementById('selfieNote').style.display='none';
+  toast('✅ Foto berhasil diambil!');
+}
+
+function ulangFoto(){
+  fotoBase64='';
+  const canvas=document.getElementById('selfieCanvas');
+  canvas.classList.remove('show');
+  document.getElementById('selfieBox').classList.remove('has-photo');
+  document.getElementById('selfieBox').onclick=mulaiKamera;
+  document.getElementById('selfieBtns').style.display='none';
+  document.getElementById('selfieNote').style.display='flex';
+  stopKamera();
+  // Langsung buka kamera lagi
+  setTimeout(mulaiKamera,200);
+}
+
+function stopKamera(){
+  if(streamKamera){
+    streamKamera.getTracks().forEach(t=>t.stop());
+    streamKamera=null;
+    document.getElementById('selfieVideo').srcObject=null;
+  }
+}
+
+function resetSelfie(){
+  fotoBase64='';
+  stopKamera();
+  const canvas=document.getElementById('selfieCanvas');
+  canvas.classList.remove('show');
+  document.getElementById('selfieBox').classList.remove('has-photo');
+  document.getElementById('selfieBox').onclick=mulaiKamera;
+  document.getElementById('selfieBtns').style.display='none';
+  document.getElementById('selfieNote').style.display='flex';
+  document.getElementById('camGuide').style.display='none';
+  document.getElementById('btnAmbil').style.display='block';
+  document.getElementById('btnUlang').style.display='none';
+}
+
 // ===== KIRIM MASUK =====
 async function kirimAbsen(){
   const nama=document.getElementById('selNama').value;
@@ -373,6 +502,7 @@ async function kirimAbsen(){
   const catatan=document.getElementById('inpCatatan').value.trim();
   if(!nama){toast('⚠️ Pilih nama Anda dulu!');return;}
   if(!tgl){toast('⚠️ Pilih tanggal!');return;}
+  if(statusPilih==='Hadir'&&!fotoBase64){toast('⚠️ Ambil foto selfie dulu!');return;}
   const riwayatNama=getRiwayatKaryawan(nama);
   if(riwayatNama.find(r=>r.tanggal===tgl)){toast(`⚠️ ${nama} sudah absen hari ini!`);return;}
 
@@ -384,14 +514,14 @@ async function kirimAbsen(){
 
   const res=await apiPost({
     action:'tambahAbsensi',nama,tanggal:tgl,status:statusPilih,
-    masuk:statusPilih==='Hadir'?masuk:'-',keluar:'-',catatan,foto:''
+    masuk:statusPilih==='Hadir'?masuk:'-',keluar:'-',catatan,foto:statusPilih==='Hadir'?fotoBase64:''
   });
 
   btn.disabled=false;btn.classList.remove('loading-btn');btn.textContent='📤 Kirim Absen Masuk';
 
   if(res&&res.success){
     const riwayatNama=getRiwayatKaryawan(nama);
-    riwayatNama.unshift({tanggal:tgl,status:statusPilih,masuk,keluar:'',catatan,timestamp:new Date().toLocaleString('id-ID')});
+    riwayatNama.unshift({tanggal:tgl,status:statusPilih,masuk,keluar:'',catatan,foto:statusPilih==='Hadir'?fotoBase64:'',timestamp:new Date().toLocaleString('id-ID')});
     if(riwayatNama.length>30)riwayatNama.splice(30);
     simpanRiwayatKaryawan(nama,riwayatNama);
     namaAktif=nama;
@@ -414,6 +544,7 @@ async function kirimAbsen(){
       const d=document.getElementById('namaDisplay');d.value='';d.classList.remove('selected');
       document.getElementById('inpCatatan').value='';
       namaAktif='';
+      resetSelfie();
     }
     document.getElementById('successOv').classList.add('show');
   } else {
@@ -490,6 +621,7 @@ function renderRiwayat(nama){
         ${r.catatan?`<span>📝 ${r.catatan}</span>`:''}
         <span style="margin-left:auto;">${r.timestamp||''}</span>
       </div>
+      ${r.foto?`<img src="${r.foto}" style="width:100%;border-radius:8px;margin-top:8px;max-height:160px;object-fit:cover;">`:''}
     </div>`).join('');
 }
 
