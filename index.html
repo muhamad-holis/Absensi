@@ -227,16 +227,25 @@ body{padding-bottom:60px;}
 
 <!-- RIWAYAT -->
 <div class="card">
-  <h2>🕐 Riwayat Absen Saya</h2>
-  <div id="riwayatList"><div class="empty-state">Belum ada riwayat.</div></div>
+  <h2>🕐 Riwayat Absen <span id="riwayatNamaLabel" style="color:var(--primary);font-size:0.85rem;"></span></h2>
+  <div id="riwayatList"><div class="empty-state">Pilih nama karyawan untuk melihat riwayat.</div></div>
 </div>
 
 <script>
 const scriptUrl='https://script.google.com/macros/s/AKfycbwaMO8V7UsetIjAjFd8IApKfvHdbaNIqwz11Srq4ybBYzd5_skZoSZv0Qp40eWLmo1Y/exec';
 let statusPilih='Hadir';
 let karyawanList=[];
-let riwayat=JSON.parse(localStorage.getItem('riwayatAbsen')||'[]');
+// riwayat disimpan per karyawan: key = 'riwayat_<nama>'
 let afterSuccessFn=null;
+let namaAktif=''; // nama karyawan yang sedang aktif/dipilih
+
+function getRiwayatKaryawan(nama){
+  if(!nama)return[];
+  return JSON.parse(localStorage.getItem('riwayat_'+nama)||'[]');
+}
+function simpanRiwayatKaryawan(nama,data){
+  localStorage.setItem('riwayat_'+nama,JSON.stringify(data));
+}
 
 function pad(n){return String(n).padStart(2,'0');}
 function today(){return new Date().toISOString().split('T')[0];}
@@ -287,7 +296,9 @@ function closeDropdown(){
 function pilihNama(nama){
   document.getElementById('selNama').value=nama;
   const d=document.getElementById('namaDisplay');d.value=nama;d.classList.add('selected');
+  namaAktif=nama;
   closeDropdown();
+  renderRiwayat(nama);
 }
 function filterNama(q){
   const list=document.getElementById('namaList');
@@ -362,7 +373,8 @@ async function kirimAbsen(){
   const catatan=document.getElementById('inpCatatan').value.trim();
   if(!nama){toast('⚠️ Pilih nama Anda dulu!');return;}
   if(!tgl){toast('⚠️ Pilih tanggal!');return;}
-  if(riwayat.find(r=>r.nama===nama&&r.tanggal===tgl)){toast(`⚠️ ${nama} sudah absen hari ini!`);return;}
+  const riwayatNama=getRiwayatKaryawan(nama);
+  if(riwayatNama.find(r=>r.tanggal===tgl)){toast(`⚠️ ${nama} sudah absen hari ini!`);return;}
 
   const btn=document.getElementById('submitBtn');
   btn.disabled=true;btn.classList.add('loading-btn');btn.textContent='Mengirim...';
@@ -378,10 +390,12 @@ async function kirimAbsen(){
   btn.disabled=false;btn.classList.remove('loading-btn');btn.textContent='📤 Kirim Absen Masuk';
 
   if(res&&res.success){
-    riwayat.unshift({nama,tanggal:tgl,status:statusPilih,masuk,keluar:'',catatan,timestamp:new Date().toLocaleString('id-ID')});
-    if(riwayat.length>30)riwayat=riwayat.slice(0,30);
-    localStorage.setItem('riwayatAbsen',JSON.stringify(riwayat));
-    renderRiwayat();
+    const riwayatNama=getRiwayatKaryawan(nama);
+    riwayatNama.unshift({tanggal:tgl,status:statusPilih,masuk,keluar:'',catatan,timestamp:new Date().toLocaleString('id-ID')});
+    if(riwayatNama.length>30)riwayatNama.splice(30);
+    simpanRiwayatKaryawan(nama,riwayatNama);
+    namaAktif=nama;
+    renderRiwayat(nama);
 
     if(statusPilih==='Hadir'){
       const stateData={nama,tanggal:tgl,masuk};
@@ -389,7 +403,7 @@ async function kirimAbsen(){
       document.getElementById('successIco').textContent='✅';
       document.getElementById('successTitle').textContent='Absen Masuk Berhasil!';
       document.getElementById('successMsg').textContent=`${nama}\n${fmtTgl(tgl)}  •  Jam Masuk: ${masuk}\n\nHalaman beralih ke Absen Pulang.`;
-      afterSuccessFn=()=>tampilModePulang(stateData);
+      afterSuccessFn=()=>{tampilModePulang(stateData);renderRiwayat(nama);};
     } else {
       document.getElementById('successIco').textContent=statusPilih==='Izin'?'🟡':'❌';
       document.getElementById('successTitle').textContent=statusPilih==='Izin'?'Izin Tercatat!':'Ketidakhadiran Tercatat!';
@@ -399,6 +413,7 @@ async function kirimAbsen(){
       document.getElementById('selNama').value='';
       const d=document.getElementById('namaDisplay');d.value='';d.classList.remove('selected');
       document.getElementById('inpCatatan').value='';
+      namaAktif='';
     }
     document.getElementById('successOv').classList.add('show');
   } else {
@@ -422,13 +437,14 @@ async function kirimKeluar(){
   btn.disabled=false;btn.classList.remove('loading-btn');btn.textContent='🚪 Catat Jam Pulang Sekarang';
 
   if(res&&res.success){
-    const idx=riwayat.findIndex(r=>r.nama===state.nama&&r.tanggal===state.tanggal);
-    if(idx>-1){riwayat[idx].keluar=keluar;localStorage.setItem('riwayatAbsen',JSON.stringify(riwayat));renderRiwayat();}
+    const riwayatNama=getRiwayatKaryawan(state.nama);
+    const idx=riwayatNama.findIndex(r=>r.tanggal===state.tanggal);
+    if(idx>-1){riwayatNama[idx].keluar=keluar;simpanRiwayatKaryawan(state.nama,riwayatNama);renderRiwayat(state.nama);}
     localStorage.removeItem('absenMasukHariIni');
     document.getElementById('successIco').textContent='🎉';
     document.getElementById('successTitle').textContent='Jam Pulang Tercatat!';
     document.getElementById('successMsg').textContent=`${state.nama}\n${fmtTgl(state.tanggal)}\nMasuk: ${state.masuk}   →   Pulang: ${keluar}`;
-    afterSuccessFn=()=>tampilModeMasuk();
+    afterSuccessFn=()=>{tampilModeMasuk();renderRiwayat('');namaAktif='';};
     document.getElementById('successOv').classList.add('show');
   } else {
     toast('⚠️ '+(res?.error||'Gagal. Coba lagi.'));
@@ -443,20 +459,30 @@ function tutupSuccess(){
 function konfirmasiGantiKaryawan(){
   if(confirm('Yakin ingin mengganti karyawan?\nData absen masuk yang belum tercatat pulang akan dihapus dari perangkat ini.')){
     localStorage.removeItem('absenMasukHariIni');
+    namaAktif='';
     tampilModeMasuk();
+    renderRiwayat('');
     loadKaryawan();
     toast('✅ Silakan pilih nama karyawan.');
   }
 }
 
 // ===== RIWAYAT =====
-function renderRiwayat(){
+function renderRiwayat(nama){
   const el=document.getElementById('riwayatList');
-  if(!riwayat.length){el.innerHTML='<div class="empty-state">Belum ada riwayat absen.</div>';return;}
-  el.innerHTML=riwayat.slice(0,15).map(r=>`
+  const label=document.getElementById('riwayatNamaLabel');
+  if(!nama){
+    label.textContent='';
+    el.innerHTML='<div class="empty-state">Pilih nama karyawan untuk melihat riwayat.</div>';
+    return;
+  }
+  label.textContent='— '+nama;
+  const data=getRiwayatKaryawan(nama);
+  if(!data.length){el.innerHTML='<div class="empty-state">Belum ada riwayat absen untuk '+nama+'.</div>';return;}
+  el.innerHTML=data.slice(0,15).map(r=>`
     <div class="riwayat-item">
       <div class="ri-top">
-        <div><div class="ri-nama">${r.nama}</div><div class="ri-tgl">${fmtTgl(r.tanggal)}</div></div>
+        <div><div class="ri-nama">${fmtTgl(r.tanggal)}</div></div>
         <span class="ri-status ${r.status==='Hadir'?'rh':r.status==='Izin'?'ri':'ra'}">${r.status}</span>
       </div>
       <div class="ri-detail">
@@ -470,15 +496,16 @@ function renderRiwayat(){
 // ===== INIT =====
 async function init(){
   document.getElementById('inpTgl').value=today();
-  renderRiwayat();
   const state=getStateMasuk();
   if(state){
+    namaAktif=state.nama;
     tampilModePulang(state);
+    renderRiwayat(state.nama);
     setConnStatus(true,'Terhubung');
-    // load karyawan background kalau nanti ganti karyawan
     apiGet({action:'getKaryawan'}).then(res=>{if(res&&!res.error){karyawanList=res.karyawan||[];filterNama('');}});
   } else {
     tampilModeMasuk();
+    renderRiwayat('');
     await loadKaryawan();
   }
 }
