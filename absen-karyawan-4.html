@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Absen Karyawan</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1a14;--card:#1a2a1e;--card2:#213028;--primary:#2ecc71;--accent:#f1c40f;--text:#e8f5ec;--muted:#7a9a82;--border:#2d4a35;--absen:#e74c3c;--izin:#f39c12;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100vh;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);}
+body{padding-bottom:60px;}
+
+.header{background:linear-gradient(135deg,#1a3a22 0%,#0f1f14 100%);padding:24px 20px 20px;text-align:center;border-bottom:1px solid var(--border);}
+.header .logo{font-size:2rem;margin-bottom:6px;}
+.header h1{font-size:1.3rem;font-weight:800;color:var(--text);letter-spacing:-0.3px;}
+.header p{font-size:0.78rem;color:var(--muted);margin-top:3px;}
+.conn-status{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:rgba(255,255,255,0.06);border-radius:20px;padding:5px 12px;font-size:0.73rem;}
+.cdot{width:7px;height:7px;border-radius:50%;background:#555;}
+.cdot.on{background:var(--primary);box-shadow:0 0 6px rgba(46,204,113,0.6);}
+
+.clock-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin:16px;text-align:center;}
+.clock-time{font-size:2.8rem;font-weight:800;color:var(--primary);letter-spacing:-1px;line-height:1;}
+.clock-date{font-size:0.82rem;color:var(--muted);margin-top:5px;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin:0 16px 14px;}
+.card h2{font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.fg label{font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
+.fg input{padding:11px 13px;background:#0f1a14;border:1.5px solid var(--border);border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.9rem;color:var(--text);outline:none;width:100%;}
+.fg input:focus{border-color:var(--primary);}
+
+.jam-auto-box{background:#0f1a14;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;}
+.jam-auto-box .jam-val{font-size:1.3rem;font-weight:800;color:var(--primary);letter-spacing:1px;}
+.jam-auto-box .jam-lock{font-size:0.7rem;color:var(--muted);text-align:right;}
+
+.search-dropdown{position:relative;width:100%;}
+.search-inp{padding:11px 13px;background:#0f1a14;border:1.5px solid var(--border);border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.9rem;color:var(--text);outline:none;width:100%;cursor:pointer;}
+.search-inp.selected{border-color:var(--primary);color:var(--primary);font-weight:700;}
+.dropdown-panel{display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;background:#1a2a1e;border:1.5px solid var(--primary);border-radius:12px;z-index:99;max-height:280px;overflow:hidden;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.dropdown-panel.open{display:flex;}
+.dropdown-search-wrap{padding:10px 10px 8px;border-bottom:1px solid var(--border);}
+.dropdown-search{width:100%;padding:9px 12px;background:#0f1a14;border:1.5px solid var(--border);border-radius:9px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;color:var(--text);outline:none;}
+.dropdown-search:focus{border-color:var(--primary);}
+.dropdown-list{overflow-y:auto;max-height:200px;}
+.dropdown-list::-webkit-scrollbar{width:4px;}
+.dropdown-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.dropdown-item{padding:11px 14px;font-size:0.88rem;cursor:pointer;color:var(--text);transition:background 0.15s;display:flex;align-items:center;gap:8px;}
+.dropdown-item:hover{background:#213028;}
+.dropdown-item.selected-item{color:var(--primary);font-weight:700;}
+.dropdown-item .item-initial{width:28px;height:28px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0;color:var(--primary);}
+.dropdown-empty{padding:18px;text-align:center;color:var(--muted);font-size:0.82rem;}
+.dropdown-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.75rem;pointer-events:none;transition:transform 0.2s;}
+.search-dropdown.open .dropdown-arrow{transform:translateY(-50%) rotate(180deg);}
+
+.status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px;}
+.st-btn{padding:12px 6px;border:2px solid var(--border);border-radius:11px;background:transparent;color:var(--muted);font-family:'Plus Jakarta Sans',sans-serif;font-size:0.8rem;font-weight:700;cursor:pointer;transition:all 0.2s;text-align:center;}
+.st-btn .ico{display:block;font-size:1.4rem;margin-bottom:3px;}
+.st-btn.hadir.sel{background:#1a3a24;border-color:var(--primary);color:var(--primary);}
+.st-btn.absen.sel{background:#2a1a1a;border-color:var(--absen);color:var(--absen);}
+.st-btn.izin.sel{background:#2a2010;border-color:var(--izin);color:var(--izin);}
+.st-btn:hover{border-color:var(--muted);}
+
+.submit-btn{width:100%;padding:15px;background:var(--primary);border:none;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:1rem;font-weight:800;color:#0a1a0e;cursor:pointer;transition:all 0.2s;margin-top:4px;}
+.submit-btn:hover{transform:translateY(-1px);}
+.submit-btn:disabled{background:#2a4a32;color:#4a7a55;cursor:not-allowed;transform:none;}
+.submit-btn.loading-btn::before{content:'';display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#0a1a0e;border-radius:50%;animation:spin 0.7s linear infinite;margin-right:8px;vertical-align:middle;}
+.btn-pulang{background:var(--accent);color:#1a1a00;}
+.btn-pulang:hover{background:#e6b800;}
+
+/* MODE PULANG */
+.info-karyawan{background:#0f1a14;border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;}
+.ik-label{font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;}
+.ik-nama{font-size:1.1rem;font-weight:800;color:var(--text);}
+.ik-tgl{font-size:0.8rem;color:var(--muted);margin-top:2px;}
+.ik-masuk{display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:#1a3a24;border:1px solid var(--primary);border-radius:8px;padding:5px 11px;font-size:0.78rem;font-weight:700;color:var(--primary);}
+
+.pulang-jam-box{text-align:center;padding:20px 0 16px;}
+.pj-label{font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+.pj-time{font-size:3.2rem;font-weight:800;color:var(--accent);letter-spacing:-1px;line-height:1;}
+.pj-note{margin-top:8px;font-size:0.73rem;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:5px;}
+.pj-note .lock-ico{font-size:0.85rem;}
+
+/* SELFIE */
+.selfie-wrap{margin-bottom:12px;}
+.selfie-wrap label{font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;}
+.selfie-box{background:#0f1a14;border:1.5px dashed var(--border);border-radius:12px;overflow:hidden;position:relative;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;cursor:pointer;transition:border-color 0.2s;}
+.selfie-box:hover{border-color:var(--primary);}
+.selfie-box.has-photo{border-style:solid;border-color:var(--primary);}
+.selfie-box video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.selfie-box canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;}
+.selfie-box canvas.show{display:block;}
+.selfie-placeholder{display:flex;flex-direction:column;align-items:center;gap:6px;z-index:1;}
+.selfie-placeholder .cam-ico{font-size:2.5rem;}
+.selfie-placeholder p{font-size:0.78rem;color:var(--muted);text-align:center;}
+.selfie-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:2;display:none;}
+.selfie-box.has-photo .selfie-placeholder{display:none;}
+.selfie-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:7px;}
+.selfie-btns button{padding:9px;border-radius:9px;border:1.5px solid var(--border);background:transparent;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.8rem;font-weight:700;cursor:pointer;color:var(--muted);transition:all 0.2s;}
+.selfie-btns .btn-ambil{border-color:var(--primary);color:var(--primary);background:#1a3a24;}
+.selfie-btns .btn-ulang{border-color:var(--border);color:var(--muted);}
+.selfie-btns .btn-ulang:hover{border-color:var(--absen);color:var(--absen);}
+.cam-guide{position:absolute;inset:12px;border:2px solid rgba(46,204,113,0.4);border-radius:50%;pointer-events:none;z-index:3;}
+.selfie-req-note{font-size:0.7rem;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:4px;}
+.riwayat-item{background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:9px;}
+.ri-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.ri-nama{font-weight:700;font-size:0.9rem;}
+.ri-tgl{font-size:0.74rem;color:var(--muted);}
+.ri-status{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;}
+.rh{background:#1a3a24;color:var(--primary);}
+.ra{background:#2a1a1a;color:var(--absen);}
+.ri{background:#2a2010;color:var(--izin);}
+.ri-detail{font-size:0.78rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;}
+
+.success-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:100;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:30px;}
+.success-ov.show{display:flex;}
+.success-ico{font-size:5rem;margin-bottom:16px;animation:pop 0.4s ease;}
+.success-ov h2{font-size:1.5rem;font-weight:800;color:var(--text);margin-bottom:8px;}
+.success-ov p{font-size:0.9rem;color:var(--muted);margin-bottom:24px;white-space:pre-line;line-height:1.6;}
+.success-ov button{padding:12px 28px;background:var(--primary);border:none;border-radius:11px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.95rem;font-weight:700;color:#0a1a0e;cursor:pointer;}
+
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a3a24;color:var(--text);padding:10px 20px;border-radius:20px;font-size:0.82rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:999;display:none;border:1px solid var(--border);white-space:nowrap;}
+.empty-state{text-align:center;padding:28px;color:var(--muted);font-size:0.84rem;}
+
+@keyframes pop{0%{transform:scale(0);}70%{transform:scale(1.2);}100%{transform:scale(1);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="success-ov" id="successOv">
+  <div class="success-ico" id="successIco">✅</div>
+  <h2 id="successTitle">Berhasil!</h2>
+  <p id="successMsg"></p>
+  <button onclick="tutupSuccess()">OK, Selesai</button>
+</div>
+
+<div class="header">
+  <div class="logo" id="headerLogo">📋</div>
+  <h1 id="headerTitle">Absensi Karyawan</h1>
+  <p id="headerSub">Isi setiap hari kerja</p>
+  <div class="conn-status">
+    <div class="cdot" id="connDot"></div>
+    <span id="connTxt">Mengecek koneksi...</span>
+  </div>
+</div>
+
+<div class="clock-box">
+  <div class="clock-time" id="clock">--:--:--</div>
+  <div class="clock-date" id="clockDate">-</div>
+</div>
+
+<!-- ====== FORM ABSEN MASUK ====== -->
+<div class="card" id="cardMasuk">
+  <h2>📝 Absen Masuk</h2>
+
+  <div id="loadingNama" style="text-align:center;padding:20px;color:var(--muted);font-size:0.84rem;">
+    🔄 Mengambil daftar karyawan...
+  </div>
+
+  <div id="formContent" style="display:none;">
+    <div class="fg">
+      <label>Nama Karyawan</label>
+      <div class="search-dropdown" id="namaDropdown">
+        <input type="text" class="search-inp" id="namaDisplay" placeholder="-- Pilih Nama Anda --" readonly onclick="toggleDropdown()" autocomplete="off">
+        <span class="dropdown-arrow">▼</span>
+        <div class="dropdown-panel" id="dropdownPanel">
+          <div class="dropdown-search-wrap">
+            <input type="text" class="dropdown-search" id="namaSearch" placeholder="🔍 Cari nama karyawan..." oninput="filterNama(this.value)">
+          </div>
+          <div class="dropdown-list" id="namaList"></div>
+        </div>
+      </div>
+      <input type="hidden" id="selNama">
+    </div>
+
+    <div class="fg">
+      <label>Tanggal</label>
+      <input type="date" id="inpTgl" readonly style="opacity:0.7;cursor:default;">
+    </div>
+
+    <label style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:block;">Status Kehadiran</label>
+    <div class="status-grid">
+      <button class="st-btn hadir sel" onclick="pilihStatus('Hadir',this)">
+        <span class="ico">✅</span>Hadir
+      </button>
+      <button class="st-btn absen" onclick="pilihStatus('Tidak Hadir',this)">
+        <span class="ico">❌</span>Tidak Hadir
+      </button>
+      <button class="st-btn izin" onclick="pilihStatus('Izin',this)">
+        <span class="ico">🟡</span>Izin
+      </button>
+    </div>
+
+    <div id="jamMasukSection" class="fg">
+      <label>Jam Masuk &nbsp;<span style="color:var(--primary);font-size:0.65rem;font-weight:600;">● Otomatis jam saat kirim</span></label>
+      <div class="jam-auto-box">
+        <div class="jam-val" id="jamMasukPreview">--:--</div>
+        <div class="jam-lock">🔒 Tidak bisa diubah<br>Dicatat saat tombol ditekan</div>
+      </div>
+    </div>
+
+    <!-- SELFIE -->
+    <div class="selfie-wrap" id="selfieSection">
+      <label>Foto Selfie <span style="color:var(--primary);font-size:0.65rem;font-weight:600;">● Wajib saat Hadir</span></label>
+      <div class="selfie-box" id="selfieBox" onclick="mulaiKamera()">
+        <video id="selfieVideo" autoplay playsinline muted></video>
+        <canvas id="selfieCanvas"></canvas>
+        <div class="cam-guide" id="camGuide" style="display:none;"></div>
+        <div class="selfie-placeholder" id="selfiePlaceholder">
+          <div class="cam-ico">📷</div>
+          <p>Ketuk untuk buka kamera<br>dan ambil selfie</p>
+        </div>
+      </div>
+      <div class="selfie-btns" id="selfieBtns" style="display:none;">
+        <button class="btn-ambil" id="btnAmbil" onclick="ambilFoto()">📸 Ambil Foto</button>
+        <button class="btn-ulang" id="btnUlang" onclick="ulangFoto()" style="display:none;">🔄 Ulangi</button>
+      </div>
+      <div class="selfie-req-note" id="selfieNote">⚠️ Foto diperlukan untuk absen Hadir</div>
+    </div>
+
+    <div class="fg">
+      <label>Catatan (opsional)</label>
+      <input type="text" id="inpCatatan" placeholder="Keterangan izin, sakit, dll...">
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="kirimAbsen()">
+      📤 Kirim Absen Masuk
+    </button>
+  </div>
+
+  <div id="noConn" style="display:none;text-align:center;padding:20px;">
+    <div style="font-size:2.5rem;margin-bottom:10px;">🔌</div>
+    <p style="font-size:0.84rem;color:var(--muted);">Gagal terhubung ke sistem.<br>Hubungi admin.</p>
+  </div>
+</div>
+
+<!-- ====== HALAMAN ABSEN PULANG ====== -->
+<div class="card" id="cardPulang" style="display:none;">
+  <h2>🚪 Absen Pulang</h2>
+
+  <div class="info-karyawan">
+    <div class="ik-label">Karyawan</div>
+    <div class="ik-nama" id="pulangNama">-</div>
+    <div class="ik-tgl" id="pulangTgl">-</div>
+    <div class="ik-masuk">⏰ Masuk: <span id="pulangJamMasuk">--:--</span></div>
+  </div>
+
+  <div class="pulang-jam-box">
+    <div class="pj-label">Jam Pulang Akan Dicatat</div>
+    <div class="pj-time" id="pulangJamLive">--:--:--</div>
+    <div class="pj-note"><span class="lock-ico">🔒</span> Jam diambil otomatis saat tombol ditekan</div>
+  </div>
+
+  <button class="submit-btn btn-pulang" id="keluarBtn" onclick="kirimKeluar()">
+    🚪 Catat Jam Pulang Sekarang
+  </button>
+
+  <button onclick="konfirmasiGantiKaryawan()" style="width:100%;margin-top:10px;padding:10px;background:transparent;border:1px solid var(--border);border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:0.8rem;color:var(--muted);cursor:pointer;">
+    Bukan saya? Ganti karyawan
+  </button>
+</div>
+
+<!-- RIWAYAT -->
+<div class="card">
+  <h2>🕐 Riwayat Absen <span id="riwayatNamaLabel" style="color:var(--primary);font-size:0.85rem;"></span></h2>
+  <div id="riwayatList"><div class="empty-state">Pilih nama karyawan untuk melihat riwayat.</div></div>
+</div>
+
+<script>
+const scriptUrl='https://script.google.com/macros/s/AKfycbwaMO8V7UsetIjAjFd8IApKfvHdbaNIqwz11Srq4ybBYzd5_skZoSZv0Qp40eWLmo1Y/exec';
+let statusPilih='Hadir';
+let karyawanList=[];
+// riwayat disimpan per karyawan: key = 'riwayat_<nama>'
+let afterSuccessFn=null;
+let namaAktif=''; // nama karyawan yang sedang aktif/dipilih
+
+function getRiwayatKaryawan(nama){
+  if(!nama)return[];
+  return JSON.parse(localStorage.getItem('riwayat_'+nama)||'[]');
+}
+function simpanRiwayatKaryawan(nama,data){
+  localStorage.setItem('riwayat_'+nama,JSON.stringify(data));
+}
+
+function pad(n){return String(n).padStart(2,'0');}
+function today(){return new Date().toISOString().split('T')[0];}
+function nowHM(){const n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes());}
+function nowHMS(){const n=new Date();return pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());}
+function fmtTgl(t){if(!t)return'-';const d=new Date(t+'T00:00:00');const b=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];return`${d.getDate()} ${b[d.getMonth()]} ${d.getFullYear()}`;}
+function toast(msg,dur=2500){const e=document.getElementById('toast');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',dur);}
+
+// ===== CLOCK =====
+function updateClock(){
+  const now=new Date();
+  const hms=`${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  document.getElementById('clock').textContent=hms;
+  document.getElementById('jamMasukPreview').textContent=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const pl=document.getElementById('pulangJamLive');
+  if(pl)pl.textContent=hms;
+  const hari=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][now.getDay()];
+  const bln=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][now.getMonth()];
+  document.getElementById('clockDate').textContent=`${hari}, ${now.getDate()} ${bln} ${now.getFullYear()}`;
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ===== API =====
+async function apiGet(p){try{return await(await fetch(scriptUrl+'?'+new URLSearchParams(p))).json();}catch{return null;}}
+async function apiPost(d){try{return await(await fetch(scriptUrl,{method:'POST',body:JSON.stringify(d)})).json();}catch{return null;}}
+
+function setConnStatus(on,msg){
+  const dot=document.getElementById('connDot'),txt=document.getElementById('connTxt');
+  if(on){dot.classList.add('on');txt.textContent=msg||'Terhubung';}
+  else{dot.classList.remove('on');txt.textContent=msg||'Tidak terhubung';}
+}
+
+// ===== DROPDOWN =====
+let ddOpen=false;
+function toggleDropdown(){
+  const p=document.getElementById('dropdownPanel'),w=document.getElementById('namaDropdown');
+  ddOpen=!ddOpen;
+  if(ddOpen){p.classList.add('open');w.classList.add('open');setTimeout(()=>document.getElementById('namaSearch').focus(),100);}
+  else closeDropdown();
+}
+function closeDropdown(){
+  document.getElementById('dropdownPanel').classList.remove('open');
+  document.getElementById('namaDropdown').classList.remove('open');
+  document.getElementById('namaSearch').value='';
+  filterNama('');ddOpen=false;
+}
+function pilihNama(nama){
+  document.getElementById('selNama').value=nama;
+  const d=document.getElementById('namaDisplay');d.value=nama;d.classList.add('selected');
+  namaAktif=nama;
+  closeDropdown();
+  renderRiwayat(nama);
+}
+function filterNama(q){
+  const list=document.getElementById('namaList');
+  const filtered=karyawanList.filter(k=>k.nama.toLowerCase().includes(q.toLowerCase()));
+  if(!filtered.length){list.innerHTML='<div class="dropdown-empty">Nama tidak ditemukan 🤷</div>';return;}
+  const sel=document.getElementById('selNama').value;
+  list.innerHTML=filtered.map(k=>{
+    const isSel=k.nama===sel;
+    return`<div class="dropdown-item${isSel?' selected-item':''}" onclick="pilihNama('${k.nama.replace(/'/g,"\\'")}')">
+      <div class="item-initial">${k.nama.charAt(0)}</div><span>${k.nama}</span>${isSel?'<span style="margin-left:auto">✓</span>':''}
+    </div>`;
+  }).join('');
+}
+document.addEventListener('click',e=>{
+  if(ddOpen&&!document.getElementById('namaDropdown').contains(e.target))closeDropdown();
+});
+
+// ===== LOAD KARYAWAN =====
+async function loadKaryawan(){
+  document.getElementById('loadingNama').style.display='block';
+  document.getElementById('formContent').style.display='none';
+  document.getElementById('noConn').style.display='none';
+  const res=await apiGet({action:'getKaryawan'});
+  document.getElementById('loadingNama').style.display='none';
+  if(!res||res.error){document.getElementById('noConn').style.display='block';setConnStatus(false,'Gagal terhubung');return;}
+  karyawanList=res.karyawan||[];
+  filterNama('');
+  document.getElementById('formContent').style.display='block';
+  setConnStatus(true,`Terhubung • ${karyawanList.length} karyawan`);
+}
+
+// ===== STATUS =====
+function pilihStatus(status,btn){
+  statusPilih=status;
+  document.querySelectorAll('.st-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const isHadir=status==='Hadir';
+  document.getElementById('jamMasukSection').style.opacity=isHadir?'1':'0.4';
+  document.getElementById('selfieSection').style.display=isHadir?'block':'none';
+  if(!isHadir) stopKamera();
+}
+
+// ===== MODE SWITCH =====
+function tampilModeMasuk(){
+  document.getElementById('cardMasuk').style.display='block';
+  document.getElementById('cardPulang').style.display='none';
+  document.getElementById('headerLogo').textContent='📋';
+  document.getElementById('headerTitle').textContent='Absensi Karyawan';
+  document.getElementById('headerSub').textContent='Isi setiap hari kerja';
+  resetSelfie();
+}
+function tampilModePulang(data){
+  stopKamera();
+  document.getElementById('cardMasuk').style.display='none';
+  document.getElementById('cardPulang').style.display='block';
+  document.getElementById('headerLogo').textContent='🚪';
+  document.getElementById('headerTitle').textContent='Absen Pulang';
+  document.getElementById('headerSub').textContent='Sudah selesai kerja?';
+  document.getElementById('pulangNama').textContent=data.nama;
+  document.getElementById('pulangTgl').textContent=fmtTgl(data.tanggal);
+  document.getElementById('pulangJamMasuk').textContent=data.masuk;
+}
+
+// ===== CEK STATE =====
+function getStateMasuk(){
+  const s=localStorage.getItem('absenMasukHariIni');
+  if(!s)return null;
+  const d=JSON.parse(s);
+  if(d.tanggal!==today()){localStorage.removeItem('absenMasukHariIni');return null;}
+  return d;
+}
+
+// ===== SELFIE / KAMERA =====
+let streamKamera=null;
+let fotoBase64='';
+
+async function mulaiKamera(){
+  if(fotoBase64)return; // sudah ada foto, tidak buka kamera lagi
+  if(streamKamera)return; // sudah berjalan
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false
+    });
+    streamKamera=stream;
+    const video=document.getElementById('selfieVideo');
+    video.srcObject=stream;
+    document.getElementById('camGuide').style.display='block';
+    document.getElementById('selfieBtns').style.display='grid';
+    document.getElementById('btnAmbil').style.display='block';
+    document.getElementById('btnUlang').style.display='none';
+    document.getElementById('selfieNote').style.display='none';
+    // nonaktifkan klik box agar tidak restart kamera
+    document.getElementById('selfieBox').onclick=null;
+  }catch(err){
+    toast('⚠️ Tidak bisa akses kamera. Izinkan akses kamera di browser.');
+  }
+}
+
+function ambilFoto(){
+  const video=document.getElementById('selfieVideo');
+  const canvas=document.getElementById('selfieCanvas');
+  canvas.width=video.videoWidth||640;
+  canvas.height=video.videoHeight||480;
+  const ctx=canvas.getContext('2d');
+  // Mirror efek (karena selfie)
+  ctx.translate(canvas.width,0);
+  ctx.scale(-1,1);
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  fotoBase64=canvas.toDataURL('image/jpeg',0.6);
+  // Tampilkan hasil foto
+  canvas.classList.add('show');
+  document.getElementById('selfieBox').classList.add('has-photo');
+  document.getElementById('camGuide').style.display='none';
+  // Hentikan kamera
+  stopKamera();
+  // Update tombol
+  document.getElementById('btnAmbil').style.display='none';
+  document.getElementById('btnUlang').style.display='block';
+  document.getElementById('selfieNote').style.display='none';
+  toast('✅ Foto berhasil diambil!');
+}
+
+function ulangFoto(){
+  fotoBase64='';
+  const canvas=document.getElementById('selfieCanvas');
+  canvas.classList.remove('show');
+  document.getElementById('selfieBox').classList.remove('has-photo');
+  document.getElementById('selfieBox').onclick=mulaiKamera;
+  document.getElementById('selfieBtns').style.display='none';
+  document.getElementById('selfieNote').style.display='flex';
+  stopKamera();
+  // Langsung buka kamera lagi
+  setTimeout(mulaiKamera,200);
+}
+
+function stopKamera(){
+  if(streamKamera){
+    streamKamera.getTracks().forEach(t=>t.stop());
+    streamKamera=null;
+    document.getElementById('selfieVideo').srcObject=null;
+  }
+}
+
+function resetSelfie(){
+  fotoBase64='';
+  stopKamera();
+  const canvas=document.getElementById('selfieCanvas');
+  canvas.classList.remove('show');
+  document.getElementById('selfieBox').classList.remove('has-photo');
+  document.getElementById('selfieBox').onclick=mulaiKamera;
+  document.getElementById('selfieBtns').style.display='none';
+  document.getElementById('selfieNote').style.display='flex';
+  document.getElementById('camGuide').style.display='none';
+  document.getElementById('btnAmbil').style.display='block';
+  document.getElementById('btnUlang').style.display='none';
+}
+
+// ===== KIRIM MASUK =====
+async function kirimAbsen(){
+  const nama=document.getElementById('selNama').value;
+  const tgl=document.getElementById('inpTgl').value;
+  const catatan=document.getElementById('inpCatatan').value.trim();
+  if(!nama){toast('⚠️ Pilih nama Anda dulu!');return;}
+  if(!tgl){toast('⚠️ Pilih tanggal!');return;}
+  if(statusPilih==='Hadir'&&!fotoBase64){toast('⚠️ Ambil foto selfie dulu!');return;}
+  const riwayatNama=getRiwayatKaryawan(nama);
+  if(riwayatNama.find(r=>r.tanggal===tgl)){toast(`⚠️ ${nama} sudah absen hari ini!`);return;}
+
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;btn.classList.add('loading-btn');btn.textContent='Mengirim...';
+
+  // Ambil jam saat tombol ditekan
+  const masuk=nowHM();
+
+  const res=await apiPost({
+    action:'tambahAbsensi',nama,tanggal:tgl,status:statusPilih,
+    masuk:statusPilih==='Hadir'?masuk:'-',keluar:'-',catatan,foto:statusPilih==='Hadir'?fotoBase64:''
+  });
+
+  btn.disabled=false;btn.classList.remove('loading-btn');btn.textContent='📤 Kirim Absen Masuk';
+
+  if(res&&res.success){
+    const riwayatNama=getRiwayatKaryawan(nama);
+    riwayatNama.unshift({tanggal:tgl,status:statusPilih,masuk,keluar:'',catatan,foto:statusPilih==='Hadir'?fotoBase64:'',timestamp:new Date().toLocaleString('id-ID')});
+    if(riwayatNama.length>30)riwayatNama.splice(30);
+    simpanRiwayatKaryawan(nama,riwayatNama);
+    namaAktif=nama;
+    renderRiwayat(nama);
+
+    if(statusPilih==='Hadir'){
+      const stateData={nama,tanggal:tgl,masuk};
+      localStorage.setItem('absenMasukHariIni',JSON.stringify(stateData));
+      document.getElementById('successIco').textContent='✅';
+      document.getElementById('successTitle').textContent='Absen Masuk Berhasil!';
+      document.getElementById('successMsg').textContent=`${nama}\n${fmtTgl(tgl)}  •  Jam Masuk: ${masuk}\n\nHalaman beralih ke Absen Pulang.`;
+      afterSuccessFn=()=>{tampilModePulang(stateData);renderRiwayat(nama);};
+    } else {
+      document.getElementById('successIco').textContent=statusPilih==='Izin'?'🟡':'❌';
+      document.getElementById('successTitle').textContent=statusPilih==='Izin'?'Izin Tercatat!':'Ketidakhadiran Tercatat!';
+      document.getElementById('successMsg').textContent=`${nama} — ${fmtTgl(tgl)}\nStatus: ${statusPilih}`;
+      afterSuccessFn=null;
+      // reset form
+      document.getElementById('selNama').value='';
+      const d=document.getElementById('namaDisplay');d.value='';d.classList.remove('selected');
+      document.getElementById('inpCatatan').value='';
+      namaAktif='';
+      resetSelfie();
+    }
+    document.getElementById('successOv').classList.add('show');
+  } else {
+    toast('⚠️ '+(res?.error||'Gagal mengirim. Coba lagi.'));
+  }
+}
+
+// ===== KIRIM PULANG =====
+async function kirimKeluar(){
+  const state=getStateMasuk();
+  if(!state){toast('⚠️ Data tidak ditemukan!');return;}
+
+  const btn=document.getElementById('keluarBtn');
+  btn.disabled=true;btn.classList.add('loading-btn');btn.textContent='Menyimpan...';
+
+  // Ambil jam saat tombol ditekan
+  const keluar=nowHM();
+
+  const res=await apiPost({action:'updateKeluar',nama:state.nama,tanggal:state.tanggal,keluar});
+
+  btn.disabled=false;btn.classList.remove('loading-btn');btn.textContent='🚪 Catat Jam Pulang Sekarang';
+
+  if(res&&res.success){
+    const riwayatNama=getRiwayatKaryawan(state.nama);
+    const idx=riwayatNama.findIndex(r=>r.tanggal===state.tanggal);
+    if(idx>-1){riwayatNama[idx].keluar=keluar;simpanRiwayatKaryawan(state.nama,riwayatNama);renderRiwayat(state.nama);}
+    localStorage.removeItem('absenMasukHariIni');
+    document.getElementById('successIco').textContent='🎉';
+    document.getElementById('successTitle').textContent='Jam Pulang Tercatat!';
+    document.getElementById('successMsg').textContent=`${state.nama}\n${fmtTgl(state.tanggal)}\nMasuk: ${state.masuk}   →   Pulang: ${keluar}`;
+    afterSuccessFn=()=>{tampilModeMasuk();renderRiwayat('');namaAktif='';};
+    document.getElementById('successOv').classList.add('show');
+  } else {
+    toast('⚠️ '+(res?.error||'Gagal. Coba lagi.'));
+  }
+}
+
+function tutupSuccess(){
+  document.getElementById('successOv').classList.remove('show');
+  if(typeof afterSuccessFn==='function'){afterSuccessFn();afterSuccessFn=null;}
+}
+
+function konfirmasiGantiKaryawan(){
+  if(confirm('Yakin ingin mengganti karyawan?\nData absen masuk yang belum tercatat pulang akan dihapus dari perangkat ini.')){
+    localStorage.removeItem('absenMasukHariIni');
+    namaAktif='';
+    tampilModeMasuk();
+    renderRiwayat('');
+    loadKaryawan();
+    toast('✅ Silakan pilih nama karyawan.');
+  }
+}
+
+// ===== RIWAYAT =====
+function renderRiwayat(nama){
+  const el=document.getElementById('riwayatList');
+  const label=document.getElementById('riwayatNamaLabel');
+  if(!nama){
+    label.textContent='';
+    el.innerHTML='<div class="empty-state">Pilih nama karyawan untuk melihat riwayat.</div>';
+    return;
+  }
+  label.textContent='— '+nama;
+  const data=getRiwayatKaryawan(nama);
+  if(!data.length){el.innerHTML='<div class="empty-state">Belum ada riwayat absen untuk '+nama+'.</div>';return;}
+  el.innerHTML=data.slice(0,15).map(r=>`
+    <div class="riwayat-item">
+      <div class="ri-top">
+        <div><div class="ri-nama">${fmtTgl(r.tanggal)}</div></div>
+        <span class="ri-status ${r.status==='Hadir'?'rh':r.status==='Izin'?'ri':'ra'}">${r.status}</span>
+      </div>
+      <div class="ri-detail">
+        ${r.status==='Hadir'&&r.masuk?`<span>⏰ ${r.masuk}${r.keluar?' → '+r.keluar:' → belum pulang'}</span>`:''}
+        ${r.catatan?`<span>📝 ${r.catatan}</span>`:''}
+        <span style="margin-left:auto;">${r.timestamp||''}</span>
+      </div>
+      ${r.foto?`<img src="${r.foto}" style="width:100%;border-radius:8px;margin-top:8px;max-height:160px;object-fit:cover;">`:''}
+    </div>`).join('');
+}
+
+// ===== INIT =====
+async function init(){
+  document.getElementById('inpTgl').value=today();
+  const state=getStateMasuk();
+  if(state){
+    namaAktif=state.nama;
+    tampilModePulang(state);
+    renderRiwayat(state.nama);
+    setConnStatus(true,'Terhubung');
+    apiGet({action:'getKaryawan'}).then(res=>{if(res&&!res.error){karyawanList=res.karyawan||[];filterNama('');}});
+  } else {
+    tampilModeMasuk();
+    renderRiwayat('');
+    await loadKaryawan();
+  }
+}
+init();
+</script>
+</body>
+</html>
